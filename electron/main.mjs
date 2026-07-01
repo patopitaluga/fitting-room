@@ -44,22 +44,35 @@ async function waitForServer() {
   throw new Error('Express server failed to start');
 }
 
-/** Used in `app.whenReady`. */
+/** Used in `capture-screen` IPC handler registered in `app.whenReady`. */
 async function capturePrimaryScreen() {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.size;
+  const windowWasVisible = mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible();
 
-  const sources = await desktopCapturer.getSources({
-    types: ['screen'],
-    thumbnailSize: { width, height },
-  });
+  if (windowWasVisible) {
+    mainWindow.hide();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 
-  const source = sources.find((entry) => entry.display_id === String(primaryDisplay.id))
-    ?? sources[0];
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.size;
 
-  if (!source) throw new Error('No screen sources found');
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width, height },
+    });
 
-  return source.thumbnail.toDataURL();
+    const source = sources.find((entry) => entry.display_id === String(primaryDisplay.id))
+      ?? sources[0];
+
+    if (!source) throw new Error('No screen sources found');
+
+    return source.thumbnail.toDataURL();
+  } finally {
+    if (windowWasVisible && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  }
 }
 
 function createWindow() {

@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync } from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
+import type { Response } from 'openai/resources/responses/responses';
 import { fileURLToPath } from 'url';
 import { pickReferencePhoto } from './pick-reference-photo.ts';
 
@@ -10,10 +11,61 @@ const referencePhotosDir = path.join(projectRoot, 'reference-photos');
 
 mkdirSync(referencePhotosDir, { recursive: true });
 
-/** Used in `askLlmToGenerateFitting`. */
+/** Used in `imageFileToDataUrl`. */
 function imageFileToDataUrl(filePath: string, mimeType: string) {
   const data = readFileSync(filePath);
   return `data:${mimeType};base64,${data.toString('base64')}`;
+}
+
+/** Used in `askLlmToGenerateFitting`. */
+function describeOpenAiGenerationFailure(response: Response) {
+  const imageCalls = response.output.filter((item) => item.type === 'image_generation_call');
+  const messages = response.output.filter((item) => item.type === 'message');
+  const refusals = messages.flatMap((item) => (
+    item.type === 'message'
+      ? item.content
+        .filter((part) => part.type === 'refusal')
+        .map((part) => part.refusal)
+      : []
+  ));
+  const assistantText = messages.flatMap((item) => (
+    item.type === 'message'
+      ? item.content
+        .filter((part) => part.type === 'output_text')
+        .map((part) => part.text)
+      : []
+  ));
+
+  const details = {
+    responseId: response.id,
+    status: response.status ?? null,
+    error: response.error,
+    incompleteDetails: response.incomplete_details,
+    outputText: response.output_text || null,
+    outputTypes: response.output.map((item) => item.type),
+    imageGenerationCalls: imageCalls.map((item) => ({
+      id: item.id,
+      status: item.status,
+      hasResult: Boolean(item.result),
+    })),
+    refusals,
+    assistantText,
+  };
+
+  console.error('OpenAI image generation failed:', details);
+
+  const summaryParts = [
+    response.error ? `${response.error.code}: ${response.error.message}` : null,
+    refusals.length > 0 ? `Refusal: ${refusals.join(' ')}` : null,
+    assistantText.length > 0 ? `Model text: ${assistantText.join(' ')}` : null,
+    imageCalls.length > 0
+      ? `Image generation calls: ${imageCalls.map((item) => `${item.status}${item.result ? '' : ' (no result)'}`).join(', ')}`
+      : null,
+    response.incomplete_details ? `Incomplete: ${JSON.stringify(response.incomplete_details)}` : null,
+    response.output_text ? `Output text: ${response.output_text}` : null,
+  ].filter(Boolean);
+
+  return summaryParts.join(' | ') || 'No generated image returned from OpenAI';
 }
 
 /** Imported in `controllers/receive-image.ts`. */
@@ -57,7 +109,7 @@ export async function askLlmToGenerateFitting(clothingImagePath: string, clothin
     .map((output) => output.result)
     .find(Boolean);
 
-  if (!imageBase64) throw new Error('No generated image returned from OpenAI');
+  if (!imageBase64) throw new Error(describeOpenAiGenerationFailure(response));
 
   return `data:image/png;base64,${imageBase64}`;
 }

@@ -45,7 +45,6 @@ async function handleUploadedImage(req: Request, res: Response, err: unknown) {
       imageDataUrl,
     });
   } catch (error) {
-    console.error('Failed to generate fitting image', error);
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Failed to generate fitting image',
     });

@@ -51,3 +51,11 @@ Add one or more reference photos of yourself to `reference-photos/`. Supported f
 ```bash
 npm start
 ```
+
+## Disclaimer
+
+Fitting Room is intended for personal, lawful use — for example, previewing outfits while you shop online.
+
+You are solely responsible for how you use this software. Do not use it for malicious, deceptive, or harmful purposes, including impersonation, harassment, fraud, non-consensual editing of other people’s likeness, or any activity that violates applicable law or the rights of others.
+
+Image generation and photo manipulation are powered by OpenAI. What you can generate, and what may be blocked, is governed by [OpenAI’s policies](https://openai.com/policies/) and [Usage policies](https://openai.com/policies/usage-policies/), including content and safety rules that apply to input images, prompts, and outputs. Requests may be refused or fail if they fall outside those rules.

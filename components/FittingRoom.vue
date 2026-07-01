@@ -56,6 +56,7 @@ async function captureAndSend() {
   errorMessage.value = '';
   statusMessage.value = '';
   generatedImageUrl.value = '';
+  await nextTick();
 
   try {
     if (!csrfToken.value) throw new Error('Security token missing. Reload the app.');
