@@ -1,0 +1,57 @@
+{
+  "name": "fitting-room",
+  "version": "1.0.0",
+  "description": "AI-powered virtual try-on: capture clothes on your screen and see how they look on you.",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [
+    "ai",
+    "electron",
+    "openai",
+    "virtual-try-on",
+    "fashion",
+    "fitting-room",
+    "screen-capture"
+  ],
+  "author": "Pato Pitaluga <patricio.pitaluga@gmail.com> (https://github.com/patopitaluga)",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patopitaluga/fitting-room.git"
+  },
+  "bugs": {
+    "url": "https://github.com/patopitaluga/fitting-room/issues"
+  },
+  "homepage": "https://github.com/patopitaluga/fitting-room#readme",
+  "engines": {
+    "node": ">=24.7.0",
+    "npm": ">=11.5.1"
+  },
+  "type": "module",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "csrf": "^3.1.0",
+    "dotenv": "^17.4.2",
+    "electron": "^43.0.0",
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "openai": "^6.45.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.0",
+    "@eslint/js": "^10.0.1",
+    "@types/multer": "^2.1.0",
+    "eslint": "^10.6.0",
+    "eslint-plugin-vue": "^10.9.2",
+    "globals": "^17.7.0",
+    "typescript-eslint": "^8.62.1",
+    "vue-eslint-parser": "^10.4.1"
+  }
+}

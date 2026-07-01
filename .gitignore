@@ -1,0 +1,6 @@
+node_modules
+.env
+reference-photos/*
+!reference-photos/.gitignore
+.DS_Store
+**/.DS_Store
