@@ -42,7 +42,6 @@ Edit `.env` and set your API key:
 
 ```env
 OPENAI_API_KEY="sk-..."
-PORT=3001
 ```
 
 Add one or more reference photos of yourself to `reference-photos/`. Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`.
@@ -51,36 +50,4 @@ Add one or more reference photos of yourself to `reference-photos/`. Supported f
 
 ```bash
 npm start
-```
-
-This opens the Fitting Room window. Screen capture only works in the app — not in a regular browser.
-
-To run the backend alone:
-
-```bash
-npm run server
-```
-
-## Project layout
-
-```
-components/          App UI
-controllers/         HTTP handlers
-electron/            Desktop app
-lib/                 AI fitting and helpers
-reference-photos/    Your photos (gitignored)
-temp-uploads/        Temporary captures (gitignored)
-views/               App shell
-server.ts            Local server
-```
-
-## API
-
-`POST /capture` — send a screen capture as multipart form field `image`. Requires `X-CSRF-Token`. Returns:
-
-```json
-{
-  "ok": true,
-  "imageDataUrl": "data:image/png;base64,..."
-}
 ```
