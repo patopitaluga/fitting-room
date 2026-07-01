@@ -1,7 +1,8 @@
 <script setup>
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 
-const isCapturing = ref(false);
+const isBusy = ref(false);
+const isGenerating = ref(false);
 const errorMessage = ref('');
 const statusMessage = ref('');
 const csrfToken = ref('');
@@ -48,9 +49,10 @@ async function loadCsrfToken() {
 
 /** Bound to the capture button click. */
 async function captureAndSend() {
-  if (isCapturing.value) return;
+  if (isBusy.value) return;
 
-  isCapturing.value = true;
+  isBusy.value = true;
+  isGenerating.value = false;
   errorMessage.value = '';
   statusMessage.value = '';
   generatedImageUrl.value = '';
@@ -58,10 +60,12 @@ async function captureAndSend() {
   try {
     if (!csrfToken.value) throw new Error('Security token missing. Reload the app.');
 
-    statusMessage.value = 'Capturing screen…';
     const imageDataUrl = await captureScreen();
 
+    isGenerating.value = true;
     statusMessage.value = 'Generating outfit…';
+    await syncWindowSize();
+
     const formData = new FormData();
     formData.append('image', dataUrlToFile(imageDataUrl, 'screen-capture.png'));
 
@@ -84,7 +88,8 @@ async function captureAndSend() {
     errorMessage.value = error instanceof Error ? error.message : 'Capture failed';
     await syncWindowSize();
   } finally {
-    isCapturing.value = false;
+    isBusy.value = false;
+    isGenerating.value = false;
   }
 }
 
@@ -122,17 +127,19 @@ onUnmounted(() => {
     class="appShell"
   >
     <button
+      v-show="!isGenerating"
       type="button"
       class="captureButton"
-      :disabled="isCapturing"
+      :class="{ captureButtonBusy: isBusy && !isGenerating }"
+      :disabled="isBusy"
       @click="captureAndSend"
     >
-      {{ isCapturing ? 'Capturing…' : 'Show me the outfit' }}
+      Show me the outfit
     </button>
 
     <p
-      v-if="statusMessage"
-      class="status"
+      v-if="isGenerating && statusMessage"
+      class="statusGenerating"
     >
       {{ statusMessage }}
     </p>
@@ -161,6 +168,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   gap: 8px;
   padding: 12px;
   width: fit-content;
@@ -179,13 +187,18 @@ onUnmounted(() => {
 
 .captureButton:disabled {
   cursor: wait;
-  opacity: 0.7;
 }
 
-.status {
-  color: #52525b;
-  font-size: 13px;
+.captureButtonBusy {
+  opacity: 0.5;
+}
+
+.statusGenerating {
+  color: #18181b;
+  font-size: 18px;
+  font-weight: 600;
   margin: 0;
+  padding: 12px 20px;
   text-align: center;
 }
 

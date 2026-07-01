@@ -1,6 +1,7 @@
 html,
 body {
   background: #f4f4f5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   margin: 0;
 }
 

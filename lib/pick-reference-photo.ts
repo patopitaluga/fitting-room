@@ -3,9 +3,18 @@ import path from 'path';
 
 const REFERENCE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
-let lastReferencePhotoPath: string | null = null;
+let referencePhotoQueue: string[] = [];
+let nextReferencePhotoIndex = 0;
 
-/** Used in `pickReferencePhoto`. */
+/** Used in `syncReferencePhotoQueue` and `pickReferencePhoto`. */
+function listReferenceFilenames(referencePhotosDir: string) {
+  return readdirSync(referencePhotosDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => REFERENCE_EXTENSIONS.has(path.extname(name).toLowerCase()));
+}
+
+/** Used in `syncReferencePhotoQueue`. */
 function shuffle<T>(items: T[]) {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -22,25 +31,42 @@ function mimeTypeForExtension(extension: string) {
   return 'image/jpeg';
 }
 
+/** Used in `pickReferencePhoto`. */
+function syncReferencePhotoQueue(referencePhotosDir: string) {
+  const onDisk = listReferenceFilenames(referencePhotosDir);
+
+  if (onDisk.length === 0) throw new Error('Add at least one photo to reference-photos/');
+
+  if (referencePhotoQueue.length === 0) {
+    referencePhotoQueue = shuffle(onDisk);
+    nextReferencePhotoIndex = 0;
+    return;
+  }
+
+  const onDiskSet = new Set(onDisk);
+  referencePhotoQueue = referencePhotoQueue.filter((name) => onDiskSet.has(name));
+
+  const inQueue = new Set(referencePhotoQueue);
+  for (const name of onDisk)
+    if (!inQueue.has(name)) referencePhotoQueue.push(name);
+
+  if (referencePhotoQueue.length === 0) {
+    referencePhotoQueue = shuffle(onDisk);
+    nextReferencePhotoIndex = 0;
+  } else if (nextReferencePhotoIndex >= referencePhotoQueue.length) nextReferencePhotoIndex = 0;
+}
+
 /** Imported in `lib/ask-llm-to-generate-fitting.ts`. */
 export function pickReferencePhoto(referencePhotosDir: string) {
-  const filenames = readdirSync(referencePhotosDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => entry.name)
-    .filter((name) => REFERENCE_EXTENSIONS.has(path.extname(name).toLowerCase()));
+  syncReferencePhotoQueue(referencePhotosDir);
 
-  if (filenames.length === 0) 
-    throw new Error('Add at least one photo to reference-photos/');
-  
-
-  const shuffled = shuffle(filenames);
-  const chosenName = shuffled.length === 1
-    ? shuffled[0]
-    : shuffled.find((name) => path.join(referencePhotosDir, name) !== lastReferencePhotoPath)
-      ?? shuffled[0];
+  const chosenName = referencePhotoQueue[nextReferencePhotoIndex];
+  nextReferencePhotoIndex = (nextReferencePhotoIndex + 1) % referencePhotoQueue.length;
 
   const filePath = path.join(referencePhotosDir, chosenName);
-  lastReferencePhotoPath = filePath;
+
+  console.log('Reference photos queue:', referencePhotoQueue);
+  console.log('Reference photo using:', chosenName, filePath);
 
   return {
     path: filePath,
