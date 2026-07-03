@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync } from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
-import type { Response } from 'openai/resources/responses/responses';
+import type { Response, ResponseInputContent, ResponseInputItem } from 'openai/resources/responses/responses';
 import { fileURLToPath } from 'url';
 import { pickReferencePhoto } from './pick-reference-photo.ts';
 
@@ -68,33 +68,62 @@ function describeOpenAiGenerationFailure(response: Response) {
   return summaryParts.join(' | ') || 'No generated image returned from OpenAI';
 }
 
+/** Used in `askLlmToGenerateFitting`. */
+function buildFittingInput(
+  referencePhotoPath: string,
+  referencePhotoMimeType: string,
+  clothingImagePath: string,
+  clothingMimeType: string,
+): ResponseInputItem.Message {
+  const content: ResponseInputContent[] = [
+    {
+      type: 'input_text',
+      text: 'La primera imagen soy yo y la segunda es una ropa que me gustaría comprarme. Muéstrame cómo me quedaría el outfit completo con todos los accesorios. Respeta la forma de mi cuerpo de la primera imagen — proporciones, complexión y silueta — para que el calce sea realista y no parezca el cuerpo del modelo de la referencia de ropa.',
+    },
+    {
+      type: 'input_image',
+      detail: 'auto',
+      image_url: imageFileToDataUrl(referencePhotoPath, referencePhotoMimeType),
+    },
+    {
+      type: 'input_image',
+      detail: 'auto',
+      image_url: imageFileToDataUrl(clothingImagePath, clothingMimeType),
+    },
+  ];
+
+  return {
+    role: 'user',
+    type: 'message',
+    content,
+  };
+}
+
 /** Imported in `controllers/receive-image.ts`. */
-export async function askLlmToGenerateFitting(clothingImagePath: string, clothingMimeType: string) {
+export async function askLlmToGenerateFitting(
+  clothingImagePath: string,
+  clothingMimeType: string,
+  userPhoto?: { path: string; mimeType: string },
+) {
   if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('OPENAI_API_KEY is not set');
 
-  const userPhoto = pickReferencePhoto(referencePhotosDir);
+  const referencePhoto = userPhoto ?? pickReferencePhoto(referencePhotosDir);
+
+  if (userPhoto) {
+    console.log('Reference photo using camera upload:', userPhoto.path);
+  }
+
   const openai = new OpenAI();
 
   const response = await openai.responses.create({
     model: 'gpt-5.4',
     input: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: 'La primera imagen soy yo y la segunda es una ropa que me gustaría comprarme, puedes mostrarme cómo me quedaría el outfit completo con todos los accesorios',
-          },
-          {
-            type: 'input_image',
-            image_url: imageFileToDataUrl(userPhoto.path, userPhoto.mimeType),
-          },
-          {
-            type: 'input_image',
-            image_url: imageFileToDataUrl(clothingImagePath, clothingMimeType),
-          },
-        ],
-      },
+      buildFittingInput(
+        referencePhoto.path,
+        referencePhoto.mimeType,
+        clothingImagePath,
+        clothingMimeType,
+      ),
     ],
     tools: [{
       type: 'image_generation',

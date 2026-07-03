@@ -17,7 +17,10 @@ const upload = multer({
   }),
 });
 
-const uploadImage = upload.single('image');
+const uploadImages = upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'reference', maxCount: 1 },
+]);
 
 /** Used in `createReceiveImageHandler`. */
 async function handleUploadedImage(req: Request, res: Response, err: unknown) {
@@ -26,18 +29,27 @@ async function handleUploadedImage(req: Request, res: Response, err: unknown) {
     return;
   }
 
-  const imageFile = req.file;
-  if (!imageFile) {
+  const clothingFile = req.files && !Array.isArray(req.files) ? req.files.image?.[0] : undefined;
+  const referenceFile = req.files && !Array.isArray(req.files) ? req.files.reference?.[0] : undefined;
+
+  if (!clothingFile) {
     res.status(400).json({ error: 'Provide an image' });
     return;
   }
 
-  const tempPath = imageFile.path;
+  const tempPaths = [clothingFile.path];
+  if (referenceFile) tempPaths.push(referenceFile.path);
 
   try {
     const imageDataUrl = await askLlmToGenerateFitting(
-      tempPath,
-      imageFile.mimetype || 'image/png',
+      clothingFile.path,
+      clothingFile.mimetype || 'image/png',
+      referenceFile
+        ? {
+          path: referenceFile.path,
+          mimeType: referenceFile.mimetype || 'image/jpeg',
+        }
+        : undefined,
     );
 
     res.json({
@@ -49,10 +61,12 @@ async function handleUploadedImage(req: Request, res: Response, err: unknown) {
       error: error instanceof Error ? error.message : 'Failed to generate fitting image',
     });
   } finally {
-    try {
-      unlinkSync(tempPath);
-    } catch (cleanupError) {
-      console.warn('Could not delete temp upload', cleanupError);
+    for (const tempPath of tempPaths) {
+      try {
+        unlinkSync(tempPath);
+      } catch (cleanupError) {
+        console.warn('Could not delete temp upload', cleanupError);
+      }
     }
   }
 }
@@ -60,7 +74,7 @@ async function handleUploadedImage(req: Request, res: Response, err: unknown) {
 /** Mounted at `POST /capture` in `server.ts`. */
 export function createReceiveImageHandler() {
   return (req: Request, res: Response) => {
-    uploadImage(req, res, (err) => {
+    uploadImages(req, res, (err) => {
       handleUploadedImage(req, res, err).catch((error) => {
         console.error('Unhandled upload error', error);
       });
